@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Counter Tutor | Таблица состояний и Карно</title>
+    <meta
+      name="description"
+      content="Учебный генератор для суммирующих, вычитающих и реверсивных счётчиков с выбором типа триггеров и картами Карно."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="data:," />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+
+    <main class="page">
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Counter / Trigger Tutor</div>
+          <h1>Счётчики, таблица состояний и карты Карно в одном учебном окне</h1>
+          <p class="hero-text">
+            Выбираешь тип счёта, модуль от 1 до 32, тип триггера и минимизацию по
+            <strong>0</strong> или <strong>1</strong>. Код сам строит таблицу
+            состояний, возбуждения и Карно-карты для каждого входа триггера.
+          </p>
+        </div>
+        <aside class="hero-card">
+          <div class="hero-card-title">Что можно выбрать</div>
+          <ul class="hero-list">
+            <li>Суммирующий</li>
+            <li>Вычитающий</li>
+            <li>Реверсивный</li>
+            <li>D / T / JK</li>
+            <li>Модуль 1..32</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="panel controls-panel">
+        <div class="controls-grid">
+          <label>
+            Тип счёта
+            <select id="counterType">
+              <option value="up">Суммирующий</option>
+              <option value="down">Вычитающий</option>
+              <option value="reversible">Реверсивный</option>
+            </select>
+          </label>
+
+          <label id="singleLimitWrap">
+            Счёт до
+            <input id="singleLimit" type="number" min="1" max="32" value="13" />
+          </label>
+
+          <label id="upLimitWrap" hidden>
+            Сложение до
+            <input id="upLimit" type="number" min="1" max="32" value="7" />
+          </label>
+
+          <label id="downLimitWrap" hidden>
+            Вычитание до
+            <input id="downLimit" type="number" min="1" max="32" value="5" />
+          </label>
+
+          <label>
+            Тип триггера
+            <select id="ffType">
+              <option value="D">D</option>
+              <option value="T">T</option>
+              <option value="JK">JK</option>
+            </select>
+          </label>
+
+          <label>
+            Базис
+            <select id="basisType">
+              <option value="and">И</option>
+              <option value="or">ИЛИ</option>
+              <option value="boolean">Булевый</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="hint">
+          Можно ставить любые значения от <strong>1</strong> до <strong>32</strong>.
+          В реверсивном режиме можно задать отдельные пределы для прямого и обратного счёта.
+        </div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="stat">
+          <div class="stat-label">Разрядов</div>
+          <div id="bitCount" class="stat-value">4</div>
+        </article>
+        <article class="stat">
+          <div class="stat-label">Состояний</div>
+          <div id="stateCount" class="stat-value">13</div>
+        </article>
+        <article class="stat">
+          <div class="stat-label">Неиспользуемых кодов</div>
+          <div id="unusedCount" class="stat-value">0</div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Таблица состояний</div>
+            <h2>Переходы, возбуждения и следующий код</h2>
+          </div>
+        </div>
+        <div id="stateArea" class="state-area"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Карты Карно</div>
+            <h2>Минимизация для входов триггера</h2>
+          </div>
+        </div>
+        <div id="mapsArea" class="maps-area"></div>
+      </section>
+
+      <section class="panel final-panel">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Итог</div>
+            <h2>Финальные формулы</h2>
+          </div>
+        </div>
+        <div id="finalArea" class="final-area"></div>
+      </section>
+    </main>
+  </body>
+</html>
