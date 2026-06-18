@@ -109,6 +109,12 @@ function totalMapVars(bitCount) {
 function excitationForPair(currBit, nextBit) {
   if (state.ffType === "D") return { D: nextBit };
   if (state.ffType === "T") return { T: currBit ^ nextBit };
+  if (state.ffType === "RS") {
+    if (currBit === 0 && nextBit === 0) return { R: "X", S: 0 };
+    if (currBit === 0 && nextBit === 1) return { R: 0, S: 1 };
+    if (currBit === 1 && nextBit === 0) return { R: 1, S: 0 };
+    return { R: 0, S: "X" };
+  }
   if (currBit === 0 && nextBit === 0) return { J: 0, K: "X" };
   if (currBit === 0 && nextBit === 1) return { J: 1, K: "X" };
   if (currBit === 1 && nextBit === 0) return { J: "X", K: 1 };
@@ -147,6 +153,10 @@ function buildFunctionValues(scenario, bitCount) {
       functions[`J${bit + 1}`] = Array(totalCodes).fill("X");
       functions[`K${bit + 1}`] = Array(totalCodes).fill("X");
     }
+    if (state.ffType === "RS") {
+      functions[`R${bit + 1}`] = Array(totalCodes).fill("X");
+      functions[`S${bit + 1}`] = Array(totalCodes).fill("X");
+    }
   }
 
   ordered.forEach((value, idx) => {
@@ -161,6 +171,10 @@ function buildFunctionValues(scenario, bitCount) {
       if (state.ffType === "JK") {
         functions[`J${bit + 1}`][value] = pair.J;
         functions[`K${bit + 1}`][value] = pair.K;
+      }
+      if (state.ffType === "RS") {
+        functions[`R${bit + 1}`][value] = pair.R;
+        functions[`S${bit + 1}`][value] = pair.S;
       }
     }
   });
@@ -183,6 +197,10 @@ function buildCombinedFunctionValues(scenarioList, bitCount) {
       functions[`J${bit + 1}`] = Array(totalCodes).fill("X");
       functions[`K${bit + 1}`] = Array(totalCodes).fill("X");
     }
+    if (state.ffType === "RS") {
+      functions[`R${bit + 1}`] = Array(totalCodes).fill("X");
+      functions[`S${bit + 1}`] = Array(totalCodes).fill("X");
+    }
   }
 
   scenarioList.forEach((scenario, alpha) => {
@@ -202,6 +220,10 @@ function buildCombinedFunctionValues(scenarioList, bitCount) {
         if (state.ffType === "JK") {
           functions[`J${bit + 1}`][index] = pair.J;
           functions[`K${bit + 1}`][index] = pair.K;
+        }
+        if (state.ffType === "RS") {
+          functions[`R${bit + 1}`][index] = pair.R;
+          functions[`S${bit + 1}`][index] = pair.S;
         }
       }
     });
@@ -441,6 +463,8 @@ function renderStateTableSection(scenario, bitCount) {
   const ffColumns = [];
   if (state.ffType === "D" || state.ffType === "T") {
     for (let i = 1; i <= bitCount; i++) ffColumns.push(`${state.ffType}${i}`);
+  } else if (state.ffType === "RS") {
+    for (let i = 1; i <= bitCount; i++) ffColumns.push(`R${i}`, `S${i}`);
   } else {
     for (let i = 1; i <= bitCount; i++) ffColumns.push(`J${i}`, `K${i}`);
   }
@@ -483,6 +507,11 @@ function renderStateTableSection(scenario, bitCount) {
 
     if (state.ffType === "D" || state.ffType === "T") {
       row.excitations.forEach((exc) => tr.appendChild(makeCell("td", String(exc[state.ffType]))));
+    } else if (state.ffType === "RS") {
+      row.excitations.forEach((exc) => {
+        tr.appendChild(makeCell("td", String(exc.R)));
+        tr.appendChild(makeCell("td", String(exc.S)));
+      });
     } else {
       row.excitations.forEach((exc) => {
         tr.appendChild(makeCell("td", String(exc.J)));
