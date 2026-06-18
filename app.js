@@ -5,6 +5,7 @@ const state = {
   downLimit: 5,
   ffType: "D",
   basisType: "and",
+  stateTableFlipped: false,
 };
 
 const VAR_LIMIT = 6;
@@ -26,6 +27,8 @@ const unusedCountEl = document.getElementById("unusedCount");
 const stateAreaEl = document.getElementById("stateArea");
 const mapsAreaEl = document.getElementById("mapsArea");
 const finalAreaEl = document.getElementById("finalArea");
+const stateOrderToggleEl = document.getElementById("stateOrderToggle");
+const copyAllStatesEl = document.getElementById("copyAllStates");
 
 function clampInt(value, min, max, fallback) {
   const n = Number.parseInt(value, 10);
@@ -74,14 +77,16 @@ function makeCell(tag, text) {
 
 function sequenceValues(direction, limit) {
   const values = Array.from({ length: limit + 1 }, (_, i) => i);
-  return direction === "down" ? values.reverse() : values;
+  if (direction === "down") return values.reverse();
+  if (direction === "downFromZero") return values;
+  return values;
 }
 
 function scenarios() {
   if (state.counterType === "reversible") {
     return [
       { label: "Прямой ход", direction: "up", limit: state.upLimit },
-      { label: "Обратный ход", direction: "down", limit: state.downLimit },
+      { label: "Обратный ход", direction: "downFromZero", limit: state.downLimit },
     ];
   }
 
@@ -457,8 +462,7 @@ function mapLayout(bitCount) {
   return { extraBits: Math.max(0, vars - 4), rowBits: 2, colBits: 2 };
 }
 
-function renderStateTableSection(scenario, bitCount) {
-  const rows = buildRows(scenario, bitCount);
+function stateTableColumns(bitCount) {
   const titles = qNames(bitCount);
   const ffColumns = [];
   if (state.ffType === "D" || state.ffType === "T") {
@@ -468,6 +472,69 @@ function renderStateTableSection(scenario, bitCount) {
   } else {
     for (let i = 1; i <= bitCount; i++) ffColumns.push(`J${i}`, `K${i}`);
   }
+
+  return {
+    titles,
+    headers: ["Состояние", `Код (${titles.join(", ")})`, "Следующее", `Код (${titles.join(", ")})`, ...ffColumns],
+  };
+}
+
+function stateTableRowCells(row) {
+  const cells = [String(row.value), bitsText(row.currentBits), String(row.next), bitsText(row.nextBits)];
+  if (state.ffType === "D" || state.ffType === "T") {
+    row.excitations.forEach((exc) => cells.push(String(exc[state.ffType])));
+  } else if (state.ffType === "RS") {
+    row.excitations.forEach((exc) => cells.push(String(exc.R), String(exc.S)));
+  } else {
+    row.excitations.forEach((exc) => cells.push(String(exc.J), String(exc.K)));
+  }
+  return cells;
+}
+
+function displayRows(rows) {
+  return state.stateTableFlipped ? [...rows].reverse() : rows;
+}
+
+function stateTableToTsv(scenario, bitCount) {
+  const { headers } = stateTableColumns(bitCount);
+  const rows = displayRows(buildRows(scenario, bitCount));
+  return [headers, ...rows.map(stateTableRowCells)].map((line) => line.join("\t")).join("\n");
+}
+
+function allStateTablesToTsv(scenarioList, bitCount) {
+  return scenarioList.map((scenario) => `${scenario.label}\n${stateTableToTsv(scenario, bitCount)}`).join("\n\n");
+}
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+function flashButton(button, text = "Copied") {
+  const original = button.textContent;
+  button.textContent = text;
+  button.disabled = true;
+  setTimeout(() => {
+    button.textContent = original;
+    button.disabled = false;
+  }, 1000);
+}
+
+function renderStateTableSection(scenario, bitCount) {
+  const rows = displayRows(buildRows(scenario, bitCount));
+  const { titles, headers } = stateTableColumns(bitCount);
+  const ffColumns = headers.slice(4);
 
   const section = document.createElement("section");
   section.className = "panel state-section";
@@ -480,6 +547,18 @@ function renderStateTableSection(scenario, bitCount) {
       <h2>${titles.join(", ")} · ${bitCount} bit</h2>
     </div>
   `;
+  const actions = document.createElement("div");
+  actions.className = "section-actions";
+  const copyButton = document.createElement("button");
+  copyButton.className = "action-button";
+  copyButton.type = "button";
+  copyButton.textContent = "Copy table";
+  copyButton.addEventListener("click", async () => {
+    await copyText(stateTableToTsv(scenario, bitCount));
+    flashButton(copyButton);
+  });
+  actions.appendChild(copyButton);
+  head.appendChild(actions);
   section.appendChild(head);
 
   const tableWrap = document.createElement("div");
@@ -500,24 +579,7 @@ function renderStateTableSection(scenario, bitCount) {
   rows.forEach((row) => {
     const tr = document.createElement("tr");
     tr.className = "used";
-    tr.appendChild(makeCell("td", String(row.value)));
-    tr.appendChild(makeCell("td", bitsText(row.currentBits)));
-    tr.appendChild(makeCell("td", String(row.next)));
-    tr.appendChild(makeCell("td", bitsText(row.nextBits)));
-
-    if (state.ffType === "D" || state.ffType === "T") {
-      row.excitations.forEach((exc) => tr.appendChild(makeCell("td", String(exc[state.ffType]))));
-    } else if (state.ffType === "RS") {
-      row.excitations.forEach((exc) => {
-        tr.appendChild(makeCell("td", String(exc.R)));
-        tr.appendChild(makeCell("td", String(exc.S)));
-      });
-    } else {
-      row.excitations.forEach((exc) => {
-        tr.appendChild(makeCell("td", String(exc.J)));
-        tr.appendChild(makeCell("td", String(exc.K)));
-      });
-    }
+    stateTableRowCells(row).forEach((value) => tr.appendChild(makeCell("td", value)));
 
     tbody.appendChild(tr);
   });
@@ -723,12 +785,14 @@ function render() {
   bitCountEl.textContent = String(bitCount);
   stateCountEl.textContent = scenarioList.length === 1 ? `${scenarioList[0].limit + 1}` : `${scenarioList[0].limit + 1} / ${scenarioList[1].limit + 1}`;
   unusedCountEl.textContent = String((2 ** varCount) - combined.used.size);
+  stateOrderToggleEl.textContent = state.stateTableFlipped ? "Normal order" : "Flip";
 
   stateAreaEl.innerHTML = "";
   mapsAreaEl.innerHTML = "";
   finalAreaEl.innerHTML = "";
 
-  scenarioList.forEach((scenario) => {
+  const stateScenarioList = state.stateTableFlipped ? [...scenarioList].reverse() : scenarioList;
+  stateScenarioList.forEach((scenario) => {
     stateAreaEl.appendChild(renderStateTableSection(scenario, bitCount));
   });
 
@@ -739,6 +803,18 @@ function render() {
 [counterTypeEl, singleLimitEl, upLimitEl, downLimitEl, ffTypeEl, basisTypeEl].forEach((el) => {
   el.addEventListener("input", render);
   el.addEventListener("change", render);
+});
+
+stateOrderToggleEl.addEventListener("click", () => {
+  state.stateTableFlipped = !state.stateTableFlipped;
+  render();
+});
+
+copyAllStatesEl.addEventListener("click", async () => {
+  const scenarioList = scenarios();
+  const bitCount = activeBitCount(scenarioList);
+  await copyText(allStateTablesToTsv(scenarioList, bitCount));
+  flashButton(copyAllStatesEl);
 });
 
 render();
