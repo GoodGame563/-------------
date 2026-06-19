@@ -56,7 +56,7 @@ function grayStrings(count) {
 }
 
 function qNames(count) {
-  return Array.from({ length: count }, (_, i) => `Q${i + 1}`);
+  return Array.from({ length: count }, (_, i) => `Q${i}`);
 }
 
 function mapVarNames(totalVars, reversible) {
@@ -152,15 +152,15 @@ function buildFunctionValues(scenario, bitCount) {
   const ordered = sequenceValues(scenario.direction, scenario.limit);
 
   for (let bit = 0; bit < bitCount; bit++) {
-    if (state.ffType === "D") functions[`D${bit + 1}`] = Array(totalCodes).fill("X");
-    if (state.ffType === "T") functions[`T${bit + 1}`] = Array(totalCodes).fill("X");
+    if (state.ffType === "D") functions[`D${bit}`] = Array(totalCodes).fill("X");
+    if (state.ffType === "T") functions[`T${bit}`] = Array(totalCodes).fill("X");
     if (state.ffType === "JK") {
-      functions[`J${bit + 1}`] = Array(totalCodes).fill("X");
-      functions[`K${bit + 1}`] = Array(totalCodes).fill("X");
+      functions[`J${bit}`] = Array(totalCodes).fill("X");
+      functions[`K${bit}`] = Array(totalCodes).fill("X");
     }
     if (state.ffType === "RS") {
-      functions[`R${bit + 1}`] = Array(totalCodes).fill("X");
-      functions[`S${bit + 1}`] = Array(totalCodes).fill("X");
+      functions[`R${bit}`] = Array(totalCodes).fill("X");
+      functions[`S${bit}`] = Array(totalCodes).fill("X");
     }
   }
 
@@ -171,15 +171,15 @@ function buildFunctionValues(scenario, bitCount) {
     const nextBits = padBits(next, bitCount);
     for (let bit = 0; bit < bitCount; bit++) {
       const pair = excitationForPair(currentBits[bit], nextBits[bit]);
-      if (state.ffType === "D") functions[`D${bit + 1}`][value] = pair.D;
-      if (state.ffType === "T") functions[`T${bit + 1}`][value] = pair.T;
+      if (state.ffType === "D") functions[`D${bit}`][value] = pair.D;
+      if (state.ffType === "T") functions[`T${bit}`][value] = pair.T;
       if (state.ffType === "JK") {
-        functions[`J${bit + 1}`][value] = pair.J;
-        functions[`K${bit + 1}`][value] = pair.K;
+        functions[`J${bit}`][value] = pair.J;
+        functions[`K${bit}`][value] = pair.K;
       }
       if (state.ffType === "RS") {
-        functions[`R${bit + 1}`][value] = pair.R;
-        functions[`S${bit + 1}`][value] = pair.S;
+        functions[`R${bit}`][value] = pair.R;
+        functions[`S${bit}`][value] = pair.S;
       }
     }
   });
@@ -196,15 +196,15 @@ function buildCombinedFunctionValues(scenarioList, bitCount) {
   const used = new Set();
 
   for (let bit = 0; bit < bitCount; bit++) {
-    if (state.ffType === "D") functions[`D${bit + 1}`] = Array(totalCodes).fill("X");
-    if (state.ffType === "T") functions[`T${bit + 1}`] = Array(totalCodes).fill("X");
+    if (state.ffType === "D") functions[`D${bit}`] = Array(totalCodes).fill("X");
+    if (state.ffType === "T") functions[`T${bit}`] = Array(totalCodes).fill("X");
     if (state.ffType === "JK") {
-      functions[`J${bit + 1}`] = Array(totalCodes).fill("X");
-      functions[`K${bit + 1}`] = Array(totalCodes).fill("X");
+      functions[`J${bit}`] = Array(totalCodes).fill("X");
+      functions[`K${bit}`] = Array(totalCodes).fill("X");
     }
     if (state.ffType === "RS") {
-      functions[`R${bit + 1}`] = Array(totalCodes).fill("X");
-      functions[`S${bit + 1}`] = Array(totalCodes).fill("X");
+      functions[`R${bit}`] = Array(totalCodes).fill("X");
+      functions[`S${bit}`] = Array(totalCodes).fill("X");
     }
   }
 
@@ -220,15 +220,15 @@ function buildCombinedFunctionValues(scenarioList, bitCount) {
 
       for (let bit = 0; bit < bitCount; bit++) {
         const pair = excitationForPair(currentBits[bit], nextBits[bit]);
-        if (state.ffType === "D") functions[`D${bit + 1}`][index] = pair.D;
-        if (state.ffType === "T") functions[`T${bit + 1}`][index] = pair.T;
+        if (state.ffType === "D") functions[`D${bit}`][index] = pair.D;
+        if (state.ffType === "T") functions[`T${bit}`][index] = pair.T;
         if (state.ffType === "JK") {
-          functions[`J${bit + 1}`][index] = pair.J;
-          functions[`K${bit + 1}`][index] = pair.K;
+          functions[`J${bit}`][index] = pair.J;
+          functions[`K${bit}`][index] = pair.K;
         }
         if (state.ffType === "RS") {
-          functions[`R${bit + 1}`][index] = pair.R;
-          functions[`S${bit + 1}`][index] = pair.S;
+          functions[`R${bit}`][index] = pair.R;
+          functions[`S${bit}`][index] = pair.S;
         }
       }
     });
@@ -349,7 +349,10 @@ function chooseCover(primes, targets) {
 
   function bitCountForMask(mask) {
     let count = 0;
-    for (let i = 0; i < VAR_LIMIT; i++) if (mask & (1 << i)) count++;
+    while (mask) {
+      count += mask & 1;
+      mask >>= 1;
+    }
     return count;
   }
 
@@ -376,42 +379,41 @@ function chooseCover(primes, targets) {
     .filter((item) => !essential.has(item.idx) && item.covers.length > 0)
     .sort((a, b) => b.covers.length - a.covers.length || bitCountForMask(a.imp.mask) - bitCountForMask(b.imp.mask));
 
-  let best = null;
+  const targetIndex = new Map(targets.map((target, idx) => [target, idx]));
+  const fullMask = (1n << BigInt(targets.length)) - 1n;
+  let initialMask = 0n;
+  coveredByEssential.forEach((value) => {
+    initialMask |= 1n << BigInt(targetIndex.get(value));
+  });
 
-  function search(start, picked, covered) {
-    if (covered.size === targets.length) {
-      const indices = [...essentialIndices, ...picked.map((p) => p.idx)];
-      const { literals } = score(indices);
-      if (
-        !best ||
-        indices.length < best.indices.length ||
-        (indices.length === best.indices.length && literals < best.literals)
-      ) {
-        best = { indices, literals };
-      }
-      return;
-    }
-
-    if (best && essentialIndices.length + picked.length >= best.indices.length) return;
-
-    const uncovered = targets.filter((value) => !covered.has(value));
-    if (!uncovered.length) return;
-    const target = uncovered[0];
-
-    for (let i = start; i < candidates.length; i++) {
-      const candidate = candidates[i];
-      if (!candidate.covers.includes(target)) continue;
-      const nextCovered = new Set(covered);
-      candidate.covers.forEach((value) => nextCovered.add(value));
-      picked.push(candidate);
-      search(i + 1, picked, nextCovered);
-      picked.pop();
-    }
+  function candidateMask(item) {
+    return item.covers.reduce((mask, value) => mask | (1n << BigInt(targetIndex.get(value))), 0n);
   }
 
-  search(0, [], coveredByEssential);
-  if (!best) return { indices: essentialIndices, literals: score(essentialIndices).literals };
-  return best;
+  function better(a, b) {
+    if (!b) return true;
+    if (a.indices.length !== b.indices.length) return a.indices.length < b.indices.length;
+    return a.literals < b.literals;
+  }
+
+  const initial = { indices: essentialIndices, literals: score(essentialIndices).literals };
+  const bestByMask = new Map([[initialMask, initial]]);
+
+  candidates.forEach((candidate) => {
+    const coverMask = candidateMask(candidate);
+    const literalCost = bitCountForMask(candidate.imp.mask);
+    [...bestByMask.entries()].forEach(([mask, current]) => {
+      const nextMask = mask | coverMask;
+      if (nextMask === mask) return;
+      const next = {
+        indices: [...current.indices, candidate.idx],
+        literals: current.literals + literalCost,
+      };
+      if (better(next, bestByMask.get(nextMask))) bestByMask.set(nextMask, next);
+    });
+  });
+
+  return bestByMask.get(fullMask) ?? initial;
 }
 
 function implicantToSop(implicant, varCount, names = qNames(varCount)) {
@@ -466,11 +468,11 @@ function stateTableColumns(bitCount) {
   const titles = qNames(bitCount);
   const ffColumns = [];
   if (state.ffType === "D" || state.ffType === "T") {
-    for (let i = 1; i <= bitCount; i++) ffColumns.push(`${state.ffType}${i}`);
+    for (let i = 0; i < bitCount; i++) ffColumns.push(`${state.ffType}${i}`);
   } else if (state.ffType === "RS") {
-    for (let i = 1; i <= bitCount; i++) ffColumns.push(`R${i}`, `S${i}`);
+    for (let i = 0; i < bitCount; i++) ffColumns.push(`R${i}`, `S${i}`);
   } else {
-    for (let i = 1; i <= bitCount; i++) ffColumns.push(`J${i}`, `K${i}`);
+    for (let i = 0; i < bitCount; i++) ffColumns.push(`J${i}`, `K${i}`);
   }
 
   return {
@@ -502,7 +504,8 @@ function stateTableToTsv(scenario, bitCount) {
 }
 
 function allStateTablesToTsv(scenarioList, bitCount) {
-  return scenarioList.map((scenario) => `${scenario.label}\n${stateTableToTsv(scenario, bitCount)}`).join("\n\n");
+  const orderedScenarios = state.stateTableFlipped ? [...scenarioList].reverse() : scenarioList;
+  return orderedScenarios.map((scenario) => `${scenario.label}\n${stateTableToTsv(scenario, bitCount)}`).join("\n\n");
 }
 
 async function copyText(text) {
